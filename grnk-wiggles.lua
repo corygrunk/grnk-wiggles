@@ -3,14 +3,15 @@
 
 
 local scope = {0,0,0,0}
-local rate = {2,3,4,1}
-local level = {2,3,4,3}
-local type = {'LFO','LFO','LFO','AR'}
+local rate = {0.1,0.1,2,1}
+local level = {1,1,8,8}
+local type = {'AR','AR','LFO+','LFO'}
 local selected = 1
 local startup = true
 
 function init()
   crow.input[1].mode('change',1,0.2,'rising')
+  crow.input[2].mode('change',1,0.2,'rising')
 
   crow.output[1].receive = function(v) out(1,v) end
   crow.output[2].receive = function(v) out(2,v) end
@@ -37,20 +38,25 @@ function out(i,v)
 end
 
 crow.input[1].change = function()
-  crow.output[4]()
+  crow.output[1]()
+end
+
+crow.input[2].change = function()
+  crow.output[2]()
 end
 
 
 function start_wiggling() -- Manully startup the LFOs
-  crow.output[1].action = "lfo(dyn{rate="..rate[1].."},dyn{level="..level[1].."})"
+  crow.output[1].action = "ar(dyn{rate="..rate[1].."},dyn{level="..level[1].."},8)"
   crow.output[1]()
-  crow.output[2].action = "lfo(dyn{rate="..rate[2].."},dyn{level="..level[2].."})"
+  crow.output[2].action = "ar(dyn{rate="..rate[2].."},dyn{level="..level[2].."},8)"
   crow.output[2]()
-  crow.output[3].action = "lfo(dyn{rate="..rate[3].."},dyn{level="..level[3].."})"
+  crow.output[3].action = "loop{ to( dyn{level="..level[3].."}, dyn{rate="..rate[3].."}), to(0, dyn{rate="..rate[3].."})}"
   crow.output[3]()
-  crow.output[4].action = "ar(0.01,dyn{rate="..rate[4].."},dyn{level="..level[4].."})"
+  crow.output[4].action = "lfo(dyn{rate="..rate[4].."},dyn{level="..level[4].."})"
   crow.output[4]()
 end
+
 
 function redraw_clock()
   while true do
@@ -74,47 +80,26 @@ function redraw()
     screen.move(60,40)
     screen.text_center('to start wiggling')
   else
-    if selected == 1 then screen.level(15) else screen.level(3) end
-    screen.move(10,8)
-    screen.text_center(type[1])
-    screen.move(10,30)
-    screen.line_rel(0,scope[1]*-4)
-    screen.stroke()
-    screen.move(10,60)
-    screen.text_center(string.format('%.1f',rate[1]))
-  
-    if selected == 2 then screen.level(15) else screen.level(3) end
-    screen.move(45,8)
-    screen.text_center(type[2])
-    screen.move(45,30)
-    screen.line_rel(0,scope[2]*-4)
-    screen.stroke()
-    screen.move(45,60)
-    screen.text_center(string.format('%.1f',rate[2]))
-  
-    if selected == 3 then screen.level(15) else screen.level(3) end
-    screen.move(77,8)
-    screen.text_center(type[3])
-    screen.move(77,30)
-    screen.line_rel(0,scope[3]*-4)
-    screen.stroke()
-    screen.move(77,60)
-    screen.text_center(string.format('%.1f',rate[3]))
-  
-    if selected == 4 then screen.level(15) else screen.level(3) end
-    screen.move(110,8)
-    screen.text_center(type[4])
-    if type[4] == 'LFO' then
-      screen.move(110,30)
-      screen.line_rel(0,scope[4]*-4)
+    for i = 1,4 do
+      if selected == i then screen.level(15) else screen.level(3) end
+      screen.move(10+(i-1)*33,8)
+      screen.text_center(type[i])
+      if type[i] == 'LFO+' then
+        screen.move(10+(i-1)*33,40)
+        screen.line_rel(0,scope[i]*-3.7)
+      elseif type[i] == 'AR' then
+        screen.move(10+(i-1)*33,40)
+        screen.line_rel(0,scope[i]*-3.7)
+      else
+        screen.move(10+(i-1)*33,26)
+        screen.line_rel(0,scope[i]*-2)
+      end
       screen.stroke()
-    elseif type[4] == 'AR' then
-      screen.move(110,49)
-      screen.line_rel(0,scope[4]*-8)
-      screen.stroke()
+      screen.move(10+(i-1)*33,50)
+      screen.text_center(string.format('%.1f',rate[i]))
+      screen.move(10+(i-1)*33,60)
+      screen.text_center(string.format('%.1f',level[i]))
     end
-    screen.move(110,60)
-    screen.text_center(string.format('%.1f',rate[4]))
   end
 
   screen.update()
@@ -125,10 +110,10 @@ function enc(n,d)
   if n == 1 then
     selected = util.clamp(selected + d,1,4)
   elseif n == 2 then
-    rate[selected] = util.clamp(rate[selected] + d/10,0.1,10)
+    rate[selected] = util.clamp(rate[selected] + d/10,0.01,10)
     crow.output[selected].dyn.rate = rate[selected]
   elseif n == 3 then
-    level[selected] = util.clamp(level[selected] + d/10,0.1,5)
+    level[selected] = util.clamp(level[selected] + d/10,0.01,8)
     crow.output[selected].dyn.level = level[selected]
   end
   screen_dirty = true
@@ -140,9 +125,9 @@ function key(n,z)
     startup = false
   else
     if n==2 and z==1 then
-      crow.output[selected]()
+      print('key 2')
     elseif n==3 and z==1 then
-      crow.output[selected]()
+      print('key 3')
     end
   end
   screen_dirty = true
